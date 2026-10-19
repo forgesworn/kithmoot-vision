@@ -14,8 +14,9 @@
     "./lab/build": "./lab/build.mjs",
     "./package.json": "./package.json"
   },
-  "files": ["web", "runtime/src", "runtime/include", "runtime/third_party", "runtime/Cargo.toml", "runtime/Cargo.lock", "runtime/README.md", "runtime/LICENSE", "lab", "art", "LICENSE", "README.md"],
+  "files": ["web", "runtime/src", "runtime/include", "runtime/examples", "runtime/.cargo", "runtime/third_party", "runtime/Cargo.toml", "runtime/Cargo.lock", "runtime/README.md", "runtime/LICENSE", "lab", "workshop", "kithmoot_vision", "scripts", "pyproject.toml", "art", "docs", "recipes", "LICENSE", "README.md"],
   "scripts": {
+    "check": "npm test",
     "test": "node --test lab/core.test.mjs workshop/browser.test.mjs",
     "test:lab": "node --test lab/browser.test.mjs",
     "vision:lab": "node lab/serve.mjs",
