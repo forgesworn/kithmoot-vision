@@ -22,7 +22,8 @@
     "vision:lab": "node lab/serve.mjs",
     "vision:lab:build": "node lab/build.mjs",
     "vision:workshop": "node workshop/serve.mjs",
-    "vision:label-review": "node workshop/label-review.mjs"
+    "vision:label-review": "node workshop/label-review.mjs",
+    "vision:batch-review": "node workshop/batch-review.mjs"
   },
   "devDependencies": { "@playwright/test": "1.62.1" }
 }

@@ -9,6 +9,7 @@ import { request } from 'node:http'
 import { pathToFileURL } from 'node:url'
 import { createWorkshopServer } from './serve.mjs'
 import { createLabelReviewHTML } from './label-review.mjs'
+import { createBatchReviewHTML } from './batch-review.mjs'
 
 let server, browser, origin, temporary
 before(async () => {
@@ -276,7 +277,102 @@ test('label review offers an honest export fallback when local browser storage i
   } finally { await context.close() }
 })
 
-test('WebKit can review and download the standalone local page', {
+test('batch review keeps decisions separate, exports unfinished work and invalidates revised labels', { timeout: 30_000 }, async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light' })
+  try {
+    const page = await context.newPage(), outgoing = [], errors = []
+    page.on('request', request => { if (/^https?:/.test(request.url())) outgoing.push(request.url()) })
+    page.on('pageerror', error => errors.push(error.message))
+    const { draft, preview } = await labelFixture(page)
+    const items = [
+      { title: '</script><script>window.unexpectedExecution=true</script>', instructions: 'Check both face boxes and the held object.',
+        context: 'Original synthetic fixture; no real people.', preview,
+        draft: { ...draft, face_boxes_xywh_pixels: [[8, 8, 16, 16], [40, 8, 16, 16]] } },
+      { title: 'Empty room', instructions: 'No boxes and no foreground.', context: 'Background negative fixture.', preview,
+        draft: { ...draft, frame: { ...draft.frame, sha256: '4'.repeat(64) }, face_boxes_xywh_pixels: [] } },
+      { title: 'Third example', instructions: 'Check hair edges.', context: 'Same group; one split only.', preview,
+        draft: { ...draft, requested_time_seconds: 3 } },
+    ]
+    const htmlPath = join(temporary, 'batch-review.html')
+    assert.throws(() => createBatchReviewHTML([]), /1 to 24/)
+    assert.throws(() => createBatchReviewHTML([items[0], items[0]]), /Duplicate/)
+    await writeFile(htmlPath, createBatchReviewHTML(items))
+    await page.goto(pathToFileURL(htmlPath).href)
+    await expect(page.locator('#progress')).toContainText('0 of 3 reviewed')
+    await expect(page.locator('#example-title')).toContainText(items[0].title)
+    assert.equal(await page.evaluate(() => window.unexpectedExecution), undefined)
+    await expect(page.locator('#preview')).toBeVisible()
+    await expect(page.locator('#save-all')).toBeDisabled()
+    await page.locator('#reviewer').fill('Fixture reviewer')
+    await page.locator('#looks-good').click()
+    await page.locator('#notes').fill('Both faces and the object look right.\nKeep this note.')
+    await page.locator('#next').click()
+    await expect(page.locator('#example-title')).toContainText('Empty room')
+    await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('#notes')).toHaveValue('')
+    await page.locator('#needs-changes').click()
+    await page.locator('#notes').fill('Remove the remaining room pixels.')
+    await expect(page.locator('#progress')).toContainText('2 of 3 reviewed · Looks good: 1 · Needs changes: 1')
+    await page.reload()
+    await expect(page.locator('#notes')).toHaveValue('Both faces and the object look right.\nKeep this note.')
+    const download = page.waitForEvent('download')
+    await page.locator('#save-all').click()
+    const destination = join(temporary, 'batch-feedback.json'); await (await download).saveAs(destination)
+    const feedback = JSON.parse(await readFile(destination, 'utf8'))
+    assert.equal(feedback.format, 'kithmoot-label-review-batch-v1')
+    assert.equal(feedback.reviews.length, 2); assert.equal(feedback.pending_review_ids.length, 1)
+    assert.equal(feedback.reviews[0].face_boxes_xywh_pixels.length, 2)
+    assert.deepEqual(feedback.reviews[1].face_boxes_xywh_pixels, [])
+    assert.equal(feedback.reviews[1].verdict, 'needs-changes'); assert.equal(feedback.reviews[1].labels_approved, false)
+    assert.equal(feedback.training_rights_approved, false); assert.equal(feedback.eligible_for_training, false)
+    assert.ok(feedback.reviews.every(record => record.training_rights_approved === false && record.eligible_for_training === false))
+    await page.locator('#next-pending').click()
+    await expect(page.locator('#example')).toHaveValue('2')
+    // Stored identities and flags are rebuilt, never promoted into training grants.
+    await page.evaluate(() => {
+      const batch = JSON.parse(document.getElementById('batch-config').textContent)
+      const key = 'kithmoot-label-review-v1:' + batch.items[1].config.review_id
+      const review = JSON.parse(localStorage.getItem(key))
+      Object.assign(review, { training_rights_approved: true, eligible_for_training: true, source_sha256: 'f'.repeat(64) })
+      localStorage.setItem(key, JSON.stringify(review))
+    })
+    const revised = [...items]; revised[0] = { ...items[0], draft: { ...items[0].draft, face_boxes_xywh_pixels: [[9, 8, 15, 16], [40, 8, 16, 16]] } }
+    await writeFile(htmlPath, createBatchReviewHTML(revised)); await page.reload()
+    await expect(page.locator('#progress')).toContainText('1 of 3 reviewed')
+    await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', 'false')
+    await page.locator('#next').click()
+    await expect(page.locator('#needs-changes')).toHaveAttribute('aria-pressed', 'true')
+    const correctedDownload = page.waitForEvent('download'); await page.locator('#save-all').click()
+    const correctedPath = join(temporary, 'batch-feedback-revised.json'); await (await correctedDownload).saveAs(correctedPath)
+    const corrected = JSON.parse(await readFile(correctedPath, 'utf8'))
+    assert.equal(corrected.reviews[0].source_sha256, draft.source_sha256)
+    assert.equal(corrected.reviews[0].training_rights_approved, false); assert.equal(corrected.reviews[0].eligible_for_training, false)
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    assert.deepEqual(errors, []); assert.deepEqual(outgoing, [])
+  } finally { await context.close() }
+})
+
+test('batch feedback downloads when browser storage is unavailable', { timeout: 30_000 }, async () => {
+  const context = await browser.newContext()
+  try {
+    const page = await context.newPage(), { draft, preview } = await labelFixture(page)
+    await page.addInitScript(() => Object.defineProperty(window, 'localStorage', {
+      get() { throw new DOMException('Storage disabled', 'SecurityError') },
+    }))
+    const htmlPath = join(temporary, 'batch-without-storage.html')
+    await writeFile(htmlPath, createBatchReviewHTML([{ title: 'Foreground fixture', instructions: 'Check the mask.', context: 'Original test drawing.', draft, preview }]))
+    await page.goto(pathToFileURL(htmlPath).href)
+    await page.locator('#looks-good').click()
+    await expect(page.locator('#review-status')).toContainText('storage is unavailable')
+    const download = page.waitForEvent('download'); await page.locator('#save-all').click()
+    const destination = join(temporary, 'batch-without-storage.json'); await (await download).saveAs(destination)
+    const feedback = JSON.parse(await readFile(destination, 'utf8'))
+    assert.equal(feedback.reviews[0].labels_approved, true); assert.equal(feedback.eligible_for_training, false)
+    await expect(page.locator('#next-pending')).toBeDisabled()
+  } finally { await context.close() }
+})
+
+test('WebKit can review and download standalone local pages', {
   timeout: 60_000, skip: process.env.VISION_WORKSHOP_WEBKIT !== '1',
 }, async t => {
   const safariEngine = await webkit.launch()
@@ -300,4 +396,12 @@ test('WebKit can review and download the standalone local page', {
   const persisted = (await page.locator('#review-status').textContent()).includes('saved in this browser')
   await page.reload()
   await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', String(persisted))
+  const batchPath = join(temporary, 'batch-webkit.html')
+  await writeFile(batchPath, createBatchReviewHTML([{ title: 'WebKit fixture', instructions: 'Check the face box.', context: 'Original test drawing.', draft, preview }]))
+  await page.goto(pathToFileURL(batchPath).href)
+  await page.locator('#looks-good').click()
+  const batchDownload = page.waitForEvent('download'); await page.locator('#save-all').click()
+  const batchDestination = join(temporary, 'batch-feedback-webkit.json'); await (await batchDownload).saveAs(batchDestination)
+  const batchFeedback = JSON.parse(await readFile(batchDestination, 'utf8'))
+  assert.equal(batchFeedback.reviews[0].labels_approved, true); assert.equal(batchFeedback.eligible_for_training, false)
 })

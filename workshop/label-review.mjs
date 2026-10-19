@@ -70,7 +70,7 @@ function mountReview() {
   show()
 }
 
-export function createLabelReviewHTML(draft, preview, { reviewer = '' } = {}) {
+export function createLabelReviewConfig(draft, preview, { reviewer = '' } = {}) {
   if (draft?.format !== 'kithmoot-pending-label-draft-v1') throw new Error('Expected a pending label draft.')
   for (const value of [draft.source_sha256, draft.frame?.sha256, draft.foreground?.sha256]) {
     if (!isHash(value)) throw new Error('Source, frame and foreground need SHA-256 identities.')
@@ -96,7 +96,11 @@ export function createLabelReviewHTML(draft, preview, { reviewer = '' } = {}) {
     frame_width: width, frame_height: height, time_seconds: draft.requested_time_seconds,
     face_boxes_xywh_pixels: boxes,
   }
-  const config = { ...identity, review_id: sha256(JSON.stringify(identity)), reviewer }
+  return { ...identity, review_id: sha256(JSON.stringify(identity)), reviewer }
+}
+
+export function createLabelReviewHTML(draft, preview, { reviewer = '' } = {}) {
+  const config = createLabelReviewConfig(draft, preview, { reviewer })
   return `<!doctype html>
 <!-- Review tool code: ${toolLicense}
 Imagery retains its own source terms; the code licence grants no imagery rights. -->
