@@ -37,7 +37,7 @@
 <button id="save-frame" disabled>Add reviewed frame</button><p id="sample-state">0 of 24 frames in this review.</p><div id="samples"></div></section>
 <section aria-labelledby="export-title"><h2 id="export-title">3. Save the review and prepare training</h2><p>A saved review contains pictures and permission notes. Keep it out of Git. Training export requires approved sources and independently grouped training, validation and test frames.</p>
 <div class="controls"><button id="save-project">Save review project</button><label>Open review project <input id="project-file" type="file" accept="application/json,.json"></label><button id="export-training" disabled>Export reviewed training data</button><button id="clear-project">Clear this browser review</button></div>
-<p>On the M4, use a Python environment with the vision dependencies and run from the repository’s <code>vision/</code> directory. Choose fresh output names.</p>
+<p>On the M4, use a Python environment with the vision dependencies and run from this vision repository’s root directory. Choose fresh output names.</p>
 <pre>python -m kithmoot_vision.workshop ~/Downloads/kithmoot-workshop-training-*.json --output data/reviewed-001
 python -m kithmoot_vision.train data/reviewed-001/manifest.jsonl runs/reviewed-001 --device mps --steps 1000
 python -m kithmoot_vision.evaluate runs/reviewed-001/experimental.pt data/reviewed-001/manifest.jsonl

@@ -1,10 +1,19 @@
 # KithMoot Vision
 
 Original MIT library for learned, local camera effects. **Experimental: no
-qualified camera model is included.** This is a separate training library
-inside the checkout, rather than another vendor's face SDK. The live inference
+qualified camera model is included.** This is an independent repository for
+face detection, foreground matting, model development and review tools.
+KithMoot is its first consumer and pins a specific source revision. The live inference
 engine is [Rust, compiled natively and to WASM SIMD](runtime/README.md).
 Python/PyTorch is used for offline model development and training.
+
+The project is [forgesworn/kithmoot-vision](https://github.com/forgesworn/kithmoot-vision).
+The Rust crate exposes native/C and WASM interfaces; the JavaScript package
+`@forgesworn/kithmoot-vision` exports `CameraVisionRuntime` with TypeScript declarations.
+It has no runtime npm dependencies. Applications supply bundled, verified WASM
+and model bytes; the host performs no fetches. Source versions are available
+from Git; npm, PyPI and crates.io publication have not been performed.
+See [the extraction and consumer boundary](docs/repository.md).
 
 `CameraVision` starts with random weights. It has a shared image encoder,
 an anchor-free multiple-face detection head and a dense foreground alpha

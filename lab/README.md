@@ -40,9 +40,9 @@ npm run vision:lab -- --prepare
 ```
 
 On Apple Silicon, append `--device mps` for the initial drawing-model training.
-Preparation reuses `vision/runtime/target`, creates original procedural drawings
-under `vision/runs/lab-drawings-v1`, and trains/exports a small smoke model under
-`vision/runs/lab-model-1000-v1` (1,000 bounded training steps). It downloads no images or weights. Existing model
+Preparation reuses `runtime/target`, creates original procedural drawings
+under `runs/lab-drawings-v1`, and trains/exports a small smoke model under
+`runs/lab-model-1000-v1` (1,000 bounded training steps). It downloads no images or weights. Existing model
 experiments are reused, never overwritten. Later starts need only
 `npm run vision:lab`. Open **http://localhost:4388**; Ctrl-C stops the server.
 
@@ -81,7 +81,7 @@ known labels so the complete workflow can be tried without personal footage.
 Add samples only after checking the three review declarations. Stop the input
 before choosing the next split and recording a separate take. Up to 32 samples
 stay in memory per export. Export all three takes together, or export several
-files and list them in the importer. From `vision/`:
+files and list them in the importer. From the repository root:
 
 ```sh
 python3 -m kithmoot_vision.capture ~/Downloads/kithmoot-vision-*.json --output data/personal-test
@@ -109,7 +109,7 @@ Captures and loaded personal models stay in this tab; the server has no upload
 endpoint. Clear lab stops the camera and releases captures, personal model,
 reference and labels. Closing the tab also ends the session. Exports/imported
 data and checkpoints are separate local files; delete those separately.
-`vision/data/` and `vision/runs/` are ignored by Git. Never add personal exports
+`data/` and `runs/` are ignored by Git. Never add personal exports
 or footage to source control.
 
 ## Android browser testing
@@ -135,11 +135,10 @@ remain separate work.
 ## Verification
 
 ```sh
-cd vision
 python3 -m unittest discover -s tests -v
 cd ..
-node --test vision/lab/core.test.mjs
-node --test vision/lab/browser.test.mjs
+node --test lab/core.test.mjs
+node --test lab/browser.test.mjs
 ```
 
 Browser checks require prepared assets and the installed Playwright Chromium.
@@ -157,28 +156,15 @@ models. They do not access a physical iPhone or prove real-face/held-object accu
 After preparing the drawing assets, build into a fresh directory:
 
 ```sh
-npm run vision:lab:build -- --output vision/runs/hosted-preview-NEW
+npm run vision:lab:build -- --output runs/hosted-preview-NEW
 ```
 
 Only original synthetic data and general MIT drawing exports with matching
 hashes can enter this bundle. Personal models and unlisted files are refused.
-The static manifest records the source revision and every asset hash. The
-publisher requires clean, committed source already merged into `origin/main`.
-
-```sh
-DEPLOY_HOST=YOUR_SSH_HOST python3 deploy/phone-access.py \
-  --lab vision/runs/hosted-preview-NEW --base-revision EXACT_PREVIOUS_SOURCE_SHA \
-  --site --receipt /path/to/new-publication-receipt.json
-```
-
-The base revision must match the live vhost and, with `--site`, the existing
-homepage HTML/CSS. The publisher stages a fresh lab release, validates/reloads
-only the KithMoot vhost, and can replace the homepage in an otherwise identical
-copy of the current website. Calls, APKs, manifests and downloads are retained.
-HTTPS hashes, device policies and rejected uploads are read back before success;
-failed activation/readback restores its own current links and vhost. No local
-development server or public capture endpoint is installed.
-
-All software/art is original MIT. The runtime's standard-library copyright
-and licence notices are served through the lab footer. This local tool does
-not enable unqualified models in calls or change published release manifests.
+The static manifest records this library's source revision and every asset
+hash. This repository has no website deployment credentials or publisher.
+KithMoot owns the public preview and its deployment: initialise its pinned
+`vision/` submodule and use `npm run vision:lab:build` from the KithMoot
+checkout to record both the application and component revision. Its publisher
+validates the pin before publication and preserves call/download assets.
+See the consumer's [phone publisher](https://github.com/forgesworn/kithmoot/blob/main/deploy/phone-access.py).

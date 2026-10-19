@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { labAssets, labHeaders } from './serve.mjs'
 import { checkedWeights } from './core.mjs'
 
-const root = fileURLToPath(new URL('../../', import.meta.url))
+const root = fileURLToPath(new URL('../', import.meta.url))
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 
 export async function buildLab(output, options = {}) {

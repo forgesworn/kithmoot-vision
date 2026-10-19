@@ -1,6 +1,9 @@
 __pycache__/
 *.egg-info/
 .venv/
+.vision-venv/
+node_modules/
+.DS_Store
 data/
 runs/
 *.pt

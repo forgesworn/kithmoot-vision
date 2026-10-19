@@ -51,7 +51,7 @@ the [bare WASM target](https://doc.rust-lang.org/rustc/platform-support/wasm32-u
 requires no WASI host, filesystem, socket or clock imports. The JavaScript host
 rejects modules with **any** host imports. It does not fetch anything itself.
 
-From `vision/`, after training an experiment:
+From the repository root, after training an experiment:
 
 ```sh
 python3 -m kithmoot_vision.export runs/smoke-model/experimental.pt runs/smoke-model/experimental.kvm

@@ -52,7 +52,7 @@ explicitly save the review project before closing the browser.
    each source review and derived image. Source filenames never determine
    output paths.
 
-Keep review projects and clips in ignored `vision/data/` or outside Git.
+Keep review projects and clips in ignored `data/` or outside Git.
 The source catalogue contains **pending candidates**, not approved datasets.
 VideoMatte240K's author confirms MIT, but the actual download page also describes
 stock-derived layers and requests a commercial-use survey. Review the archive,
@@ -69,12 +69,11 @@ snapshot. Preserve existing checkouts and unrelated release work. A Python
 
 ```sh
 python3.12 -m venv .vision-venv
-.vision-venv/bin/python -m pip install --no-cache-dir -e vision
-cd vision
-../.vision-venv/bin/python -m kithmoot_vision.workshop ~/Downloads/kithmoot-workshop-training-*.json --output data/reviewed-001
-../.vision-venv/bin/python -m kithmoot_vision.train data/reviewed-001/manifest.jsonl runs/reviewed-001 --device mps --steps 1000
-../.vision-venv/bin/python -m kithmoot_vision.evaluate runs/reviewed-001/experimental.pt data/reviewed-001/manifest.jsonl
-../.vision-venv/bin/python -m kithmoot_vision.export runs/reviewed-001/experimental.pt runs/reviewed-001/experimental.kvm
+.vision-venv/bin/python -m pip install --no-cache-dir -e .
+.vision-venv/bin/python -m kithmoot_vision.workshop ~/Downloads/kithmoot-workshop-training-*.json --output data/reviewed-001
+.vision-venv/bin/python -m kithmoot_vision.train data/reviewed-001/manifest.jsonl runs/reviewed-001 --device mps --steps 1000
+.vision-venv/bin/python -m kithmoot_vision.evaluate runs/reviewed-001/experimental.pt data/reviewed-001/manifest.jsonl
+.vision-venv/bin/python -m kithmoot_vision.export runs/reviewed-001/experimental.pt runs/reviewed-001/experimental.kvm
 ```
 
 This is local Apple Metal training, not a cloud service. Load the resulting
@@ -89,7 +88,7 @@ reviewed dataset hash, framework/device and training-source recipe. Resume to a
 architecture, framework, device and training source:
 
 ```sh
-../.vision-venv/bin/python -m kithmoot_vision.train data/reviewed-001/manifest.jsonl runs/reviewed-002 --device mps --steps 2000 --resume runs/reviewed-001/checkpoint.pt
+.vision-venv/bin/python -m kithmoot_vision.train data/reviewed-001/manifest.jsonl runs/reviewed-002 --device mps --steps 2000 --resume runs/reviewed-001/checkpoint.pt
 ```
 
 `--steps` is the total, including resumed steps. Checkpoint frequency defaults
@@ -128,8 +127,7 @@ review/import/train loop is not a capable real-camera model.
 ## Checks
 
 ```sh
-node --test vision/workshop/browser.test.mjs
-cd vision
+node --test workshop/browser.test.mjs
 python -m unittest discover -s tests -v
 ```
 

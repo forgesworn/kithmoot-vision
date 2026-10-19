@@ -1,0 +1,121 @@
+{
+  "format": "kithmoot-synthetic-source-pilot-v1",
+  "date": "2026-10-19",
+  "status": "pending human source/terms and label review",
+  "approved": false,
+  "used_for_training": false,
+  "real_camera_quality_claim": false,
+  "sources": {
+    "person-mug": {
+      "filename": "person-mug.png",
+      "sha256": "14785ce6c4250596fb0a30e4299035f55dd2866b0d65210b2591bdbbc64745ee",
+      "prompt": "person-mug.prompt.txt",
+      "prompt_sha256": "913475d5bc4c1c8af020c780077fb602133f48db36624e54c3a06d07bd77cbee",
+      "requested_model": "gpt-image-2.5-sunburst",
+      "requested_quality": "high",
+      "requested_background": "transparent",
+      "alpha_pixels": {
+        "transparent": 494839,
+        "opaque": 0,
+        "near_opaque_250_to_255": 505789,
+        "fractional": 553737
+      }
+    },
+    "person-book": {
+      "filename": "person-book.png",
+      "sha256": "ef109be3a4c3b74f71e19138c07a38668a297d46e8c62a00227d7e7a7bf23d56",
+      "prompt": "person-book.prompt.txt",
+      "prompt_sha256": "956e78855106a4ca04a36b4f70aa9ab411b67ea1c6ac1663e5e241cc0d4fd35f",
+      "requested_model": "gpt-image-2.5-sunburst",
+      "requested_quality": "high",
+      "requested_background": "transparent",
+      "alpha_pixels": {
+        "transparent": 393254,
+        "opaque": 0,
+        "near_opaque_250_to_255": 628233,
+        "fractional": 655322
+      }
+    },
+    "background-study": {
+      "filename": "background-study.png",
+      "sha256": "fe7f08bc5fc193a25a8ee09f8c335c85f7ede82b04416f7770208b0bbab76cfc",
+      "prompt": "background-study.prompt.txt",
+      "prompt_sha256": "74dc1a6e2b594e2cf886e1d035b9464a93e491d3a2510f2148baf87423138725",
+      "requested_model": "gpt-image-2.5-sunburst",
+      "requested_quality": "high",
+      "requested_background": "opaque",
+      "alpha_pixels": {
+        "transparent": 0,
+        "opaque": 1048576,
+        "near_opaque_250_to_255": 1048576,
+        "fractional": 0
+      }
+    },
+    "background-kitchen": {
+      "filename": "background-kitchen.png",
+      "sha256": "ee70981266a96af02a479b9354703e2e9c641188bc7a01c318688419e481a05c",
+      "prompt": "background-kitchen.prompt.txt",
+      "prompt_sha256": "7b37fd7cee57e23795ae9b0d71bb9e581da26f02850a6fbf367e039b9c0b5d9b",
+      "requested_model": "gpt-image-2.5-sunburst",
+      "requested_quality": "high",
+      "requested_background": "opaque",
+      "alpha_pixels": {
+        "transparent": 0,
+        "opaque": 1048576,
+        "near_opaque_250_to_255": 1048576,
+        "fractional": 0
+      }
+    }
+  },
+  "composites": [
+    {
+      "filename": "person-mug-in-background-study.png",
+      "sha256": "34f11a0fdcfffd35123f1772b31a276270019ac6fa53b96388572b3502fffd8d",
+      "alpha_filename": "person-mug-in-background-study.alpha.png",
+      "alpha_sha256": "1c8f2d833267135efcf0332e9ce6c32723499c7d1074cfa8c848008e67973791",
+      "person": "person-mug",
+      "background": "background-study",
+      "width": 960,
+      "height": 960
+    },
+    {
+      "filename": "person-mug-in-background-kitchen.png",
+      "sha256": "890fea11fcfe0d8b61150a59e182b09fca44439d5de65dddf0e142d06e18283c",
+      "alpha_filename": "person-mug-in-background-kitchen.alpha.png",
+      "alpha_sha256": "1c8f2d833267135efcf0332e9ce6c32723499c7d1074cfa8c848008e67973791",
+      "person": "person-mug",
+      "background": "background-kitchen",
+      "width": 960,
+      "height": 960
+    },
+    {
+      "filename": "person-book-in-background-study.png",
+      "sha256": "2649aa4325259930989bcf5c8cf18b0fd77cfa6575f311e7da510d23cce05b80",
+      "alpha_filename": "person-book-in-background-study.alpha.png",
+      "alpha_sha256": "5d6de857560f3b91e7901f3bd9cdc6451d754e00b03819d620a8f9e9a3c9e36e",
+      "person": "person-book",
+      "background": "background-study",
+      "width": 960,
+      "height": 960
+    },
+    {
+      "filename": "person-book-in-background-kitchen.png",
+      "sha256": "2e0c3ada71482ddae8eb4df645fc460ce140b5bc4d4227d03506a9c3ecf5cab8",
+      "alpha_filename": "person-book-in-background-kitchen.alpha.png",
+      "alpha_sha256": "5d6de857560f3b91e7901f3bd9cdc6451d754e00b03819d620a8f9e9a3c9e36e",
+      "person": "person-book",
+      "background": "background-kitchen",
+      "width": 960,
+      "height": 960
+    }
+  ],
+  "split_policy": "All four composites in one split; never an independent test set",
+  "preparation_script_sha256": "59783abdf9a341d6d2a6f870fcf7875350062547e495d2fa78e4a39e38701d32",
+  "generation_path": "Configured sunburst-imagegen skill, explicit Images API model; not a built-in model substitution",
+  "raw_sources_in_git": false,
+  "generated_alpha_requires_review": true,
+  "observations": [
+    "Both returned people have alpha range 0..254, with no fully opaque 255 pixels; retain as returned and inspect interior opacity, hair, fingers and held objects before approval.",
+    "Four composites share people/backgrounds and belong to one connected split; they cannot establish independent validation or real-camera accuracy."
+  ]
+}

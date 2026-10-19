@@ -22,7 +22,7 @@ function run(command, args, cwd = vision) {
 
 export async function prepare(device = 'cpu') {
   if (process.env.CARGO_TARGET_DIR && resolve(process.env.CARGO_TARGET_DIR) !== join(vision, 'runtime/target')) {
-    throw new Error('Use the worktree’s existing vision/runtime/target; unset CARGO_TARGET_DIR')
+    throw new Error('Use the worktree’s existing runtime/target; unset CARGO_TARGET_DIR')
   }
   run('cargo', ['build', '--locked', '--release', '--lib', '--target', 'wasm32-unknown-unknown'], join(vision, 'runtime'))
   const python = process.env.VISION_PYTHON ?? 'python3'
@@ -46,7 +46,7 @@ export async function labAssets({ modelDirectory = model, dataDirectory = data, 
   routes.set('/default.kvm', join(modelDirectory, 'experimental.kvm'))
   routes.set('/default.json', join(modelDirectory, 'experimental.json'))
   routes.set('/LICENSE', join(vision, 'LICENSE'))
-  routes.set('/mask.svg', resolve(vision, '../art/face-mask/kithmoot-mask.svg'))
+  routes.set('/mask.svg', join(vision, 'art/face-mask/kithmoot-mask.svg'))
   const notices = ['Apache-2.0.txt', 'COPYRIGHT-library.html', 'MIT.txt', 'Unicode-3.0.txt', 'BSD-2-Clause.txt']
   for (const name of notices) routes.set('/notices/' + name, join(vision, 'runtime/third_party/rust-1.94.1', name))
   const manifest = await readFile(join(dataDirectory, 'manifest.jsonl'))

@@ -1,0 +1,26 @@
+{
+  "name": "@forgesworn/kithmoot-vision",
+  "version": "0.1.0",
+  "description": "Experimental MIT face detection and foreground matting with local Rust/WASM inference",
+  "license": "MIT",
+  "author": "TheCryptoDonkey",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "repository": { "type": "git", "url": "git+https://github.com/forgesworn/kithmoot-vision.git" },
+  "main": "./web/runtime.mjs",
+  "types": "./web/runtime.d.ts",
+  "exports": {
+    ".": { "types": "./web/runtime.d.ts", "import": "./web/runtime.mjs", "default": "./web/runtime.mjs" },
+    "./lab/build": "./lab/build.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": ["web", "runtime/src", "runtime/include", "runtime/third_party", "runtime/Cargo.toml", "runtime/Cargo.lock", "runtime/README.md", "runtime/LICENSE", "lab", "art", "LICENSE", "README.md"],
+  "scripts": {
+    "test": "node --test lab/core.test.mjs workshop/browser.test.mjs",
+    "test:lab": "node --test lab/browser.test.mjs",
+    "vision:lab": "node lab/serve.mjs",
+    "vision:lab:build": "node lab/build.mjs",
+    "vision:workshop": "node workshop/serve.mjs"
+  },
+  "devDependencies": { "@playwright/test": "1.62.1" }
+}
