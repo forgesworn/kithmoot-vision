@@ -85,6 +85,31 @@ training or creates a training export. Keep the HTML, imagery and feedback
 outside Git. The generator refuses to replace a file unless `--overwrite` is
 explicitly supplied.
 
+## Review several drafts together
+
+Prepare a `kithmoot-pending-label-batch-v1` JSON manifest containing `title` and
+`items`. Each item has `title`, `instructions`, `context`, `draft` and `preview`.
+The last two are paths relative to the manifest, pointing to the same draft
+JSON and PNG used for a single review. Use plain-language context to identify
+real or synthetic sources, label limitations and connected split groups.
+
+```sh
+npm run vision:batch-review -- --batch data/batch.json --output data/batch-review.html --reviewer reviewer-1
+```
+
+The standalone page supports 1–24 examples, including multiple face boxes and
+empty-room negatives. **Previous**, **Next** and **Next unreviewed** navigate
+without sharing verdicts between examples. **Save all reviews** downloads a
+`kithmoot-label-review-batch-v1` bundle containing completed per-example reviews
+and the IDs still pending. It is a label-feedback bundle, not a training export.
+The exact same draft identity shares feedback with a single-review page where
+the browser permits shared local storage. A revised image, mask, box or preview
+requires a fresh verdict for that example only. Source approval and independent
+training/validation/test groups are still required in Model Workshop.
+
+For the retained ten-example pilot and the next training steps, see the
+[M4 handover](../docs/m4-handover.md).
+
 ## Train on the M4
 
 Use this source version on the M4 in a clean checkout or an isolated source
