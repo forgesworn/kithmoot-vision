@@ -1,12 +1,14 @@
 /** Real browser review/export, using only original synthetic test pictures. */
 import assert from 'node:assert/strict'
 import test, { before, after } from 'node:test'
-import { chromium, expect } from '@playwright/test'
+import { chromium, webkit, expect } from '@playwright/test'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { request } from 'node:http'
+import { pathToFileURL } from 'node:url'
 import { createWorkshopServer } from './serve.mjs'
+import { createLabelReviewHTML } from './label-review.mjs'
 
 let server, browser, origin, temporary
 before(async () => {
@@ -181,4 +183,121 @@ test('local video can be sought and captured without camera or microphone access
     await page.locator('#faces-reviewed').check(); await page.locator('#save-frame').click()
     await expect(page.locator('#sample-state')).toContainText('1 of 24')
   } finally { await context.close() }
+})
+
+async function labelFixture(page) {
+  const data = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 48
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#386b80'; ctx.fillRect(0, 0, 64, 48)
+    ctx.fillStyle = '#b98260'; ctx.fillRect(24, 8, 16, 16)
+    return canvas.toDataURL().split(',')[1]
+  })
+  return {
+    preview: Buffer.from(data, 'base64'),
+    draft: { format: 'kithmoot-pending-label-draft-v1', source_sha256: '1'.repeat(64),
+      frame: { sha256: '2'.repeat(64), width: 64, height: 48 },
+      foreground: { sha256: '3'.repeat(64) }, requested_time_seconds: 2,
+      face_boxes_xywh_pixels: [[24, 8, 16, 16]], source_rights_status: 'pending' },
+  }
+}
+
+test('standalone label decisions persist, export without training grants and reset for revised labels', { timeout: 30_000 }, async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  try {
+    const page = await context.newPage(), outgoing = [], errors = []
+    page.on('request', request => { if (/^https?:/.test(request.url())) outgoing.push(request.url()) })
+    page.on('pageerror', error => errors.push(error.message))
+    const { draft, preview } = await labelFixture(page)
+    assert.throws(() => createLabelReviewHTML({ ...draft, source_sha256: 'unknown' }, preview), /SHA-256/)
+    assert.throws(() => createLabelReviewHTML({ ...draft, face_boxes_xywh_pixels: [[60, 8, 16, 16]] }, preview), /face boxes/)
+    assert.throws(() => createLabelReviewHTML(draft, Buffer.from('not an image')), /PNG/)
+    const reviewer = '</script><script>window.unexpectedExecution=true</script>'
+    const htmlPath = join(temporary, 'label-review.html')
+    await writeFile(htmlPath, createLabelReviewHTML(draft, preview, { reviewer }))
+    await page.goto(pathToFileURL(htmlPath).href)
+    await expect(page.locator('img')).toBeVisible()
+    assert.equal(await page.locator('img').evaluate(image => image.naturalWidth), 64)
+    await expect(page.locator('#reviewer')).toHaveValue(reviewer)
+    assert.equal(await page.evaluate(() => window.unexpectedExecution), undefined)
+    await expect(page.locator('#save-review')).toBeDisabled()
+    await page.getByRole('button', { name: 'Looks good', exact: true }).click()
+    await page.locator('#notes').fill('Face, hair and sleeves look right.\nKeep this note verbatim.')
+    await expect(page.locator('#review-status')).toContainText('saved in this browser')
+    await page.reload()
+    await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#notes')).toHaveValue('Face, hair and sleeves look right.\nKeep this note verbatim.')
+    const downloaded = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Save review', exact: true }).click()
+    const destination = join(temporary, 'label-feedback.json'); await (await downloaded).saveAs(destination)
+    const review = JSON.parse(await readFile(destination, 'utf8'))
+    assert.equal(review.format, 'kithmoot-label-review-v1'); assert.equal(review.scope, 'labels-only')
+    assert.equal(review.verdict, 'looks-good'); assert.equal(review.labels_approved, true)
+    assert.equal(review.training_rights_approved, false); assert.equal(review.eligible_for_training, false)
+    assert.equal(review.source_sha256, draft.source_sha256)
+    assert.equal(review.foreground_sha256, draft.foreground.sha256)
+    assert.deepEqual(review.face_boxes_xywh_pixels, draft.face_boxes_xywh_pixels)
+    assert.match(review.preview_sha256, /^[a-f0-9]{64}$/)
+    assert.equal(review.notes, 'Face, hair and sleeves look right.\nKeep this note verbatim.')
+    await page.getByRole('button', { name: 'Needs changes', exact: true }).click()
+    await page.reload()
+    await expect(page.locator('#needs-changes')).toHaveAttribute('aria-pressed', 'true')
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('kithmoot-label-review-v1:' + JSON.parse(document.getElementById('review-config').textContent).review_id)))
+    assert.equal(stored.labels_approved, false); assert.equal(stored.eligible_for_training, false)
+    const revised = { ...draft, face_boxes_xywh_pixels: [[23, 8, 17, 16]] }
+    await writeFile(htmlPath, createLabelReviewHTML(revised, preview))
+    await page.reload()
+    await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('#needs-changes')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('#save-review')).toBeDisabled()
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    assert.deepEqual(errors, []); assert.deepEqual(outgoing, [])
+  } finally { await context.close() }
+})
+
+test('label review offers an honest export fallback when local browser storage is unavailable', { timeout: 30_000 }, async () => {
+  const context = await browser.newContext()
+  try {
+    const page = await context.newPage(), { draft, preview } = await labelFixture(page)
+    await page.addInitScript(() => Object.defineProperty(window, 'localStorage', {
+      get() { throw new DOMException('Storage disabled', 'SecurityError') },
+    }))
+    const htmlPath = join(temporary, 'label-review-without-storage.html')
+    await writeFile(htmlPath, createLabelReviewHTML(draft, preview))
+    await page.goto(pathToFileURL(htmlPath).href)
+    await page.getByRole('button', { name: 'Looks good', exact: true }).click()
+    await expect(page.locator('#review-status')).toContainText('for this session')
+    await expect(page.locator('#review-status')).toContainText('storage is unavailable')
+    const downloaded = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Save review', exact: true }).click()
+    const destination = join(temporary, 'label-feedback-without-storage.json'); await (await downloaded).saveAs(destination)
+    const review = JSON.parse(await readFile(destination, 'utf8'))
+    assert.equal(review.labels_approved, true)
+    assert.equal(review.training_rights_approved, false); assert.equal(review.eligible_for_training, false)
+  } finally { await context.close() }
+})
+
+test('WebKit can review and download the standalone local page', {
+  timeout: 60_000, skip: process.env.VISION_WORKSHOP_WEBKIT !== '1',
+}, async t => {
+  const safariEngine = await webkit.launch()
+  t.after(() => safariEngine.close())
+  const context = await safariEngine.newContext(), page = await context.newPage()
+  const { draft, preview } = await labelFixture(page)
+  const htmlPath = join(temporary, 'label-review-webkit.html')
+  const html = createLabelReviewHTML(draft, preview, { reviewer: 'Synthetic fixture reviewer' })
+  assert.ok(html.includes('Copyright (c) 2026 TheCryptoDonkey'))
+  await writeFile(htmlPath, html)
+  await page.goto(pathToFileURL(htmlPath).href)
+  await page.getByRole('button', { name: 'Looks good', exact: true }).click()
+  await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('#save-review')).toBeEnabled()
+  const downloaded = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Save review', exact: true }).click()
+  const destination = join(temporary, 'label-feedback-webkit.json'); await (await downloaded).saveAs(destination)
+  const review = JSON.parse(await readFile(destination, 'utf8'))
+  assert.equal(review.verdict, 'looks-good'); assert.equal(review.labels_approved, true)
+  assert.equal(review.training_rights_approved, false); assert.equal(review.eligible_for_training, false)
+  const persisted = (await page.locator('#review-status').textContent()).includes('saved in this browser')
+  await page.reload()
+  await expect(page.locator('#looks-good')).toHaveAttribute('aria-pressed', String(persisted))
 })

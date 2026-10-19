@@ -21,7 +21,8 @@
     "test:lab": "node --test lab/browser.test.mjs",
     "vision:lab": "node lab/serve.mjs",
     "vision:lab:build": "node lab/build.mjs",
-    "vision:workshop": "node workshop/serve.mjs"
+    "vision:workshop": "node workshop/serve.mjs",
+    "vision:label-review": "node workshop/label-review.mjs"
   },
   "devDependencies": { "@playwright/test": "1.62.1" }
 }
