@@ -65,6 +65,7 @@ jobs:
       - name: Exercise local source review, annotation and dataset export
         env:
           VISION_WORKSHOP_EXPORT: ${{ runner.temp }}/workshop-reviewed-fixture.json
+          VISION_WORKSHOP_WEBKIT: '1'
         run: |
           node --test workshop/browser.test.mjs
           .vision-venv/bin/python -m kithmoot_vision.workshop "$RUNNER_TEMP/workshop-reviewed-fixture.json" --output "$RUNNER_TEMP/workshop-reviewed-data"

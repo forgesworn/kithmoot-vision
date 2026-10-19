@@ -61,6 +61,30 @@ is submitted by this tool. Stock footage alone does not supply foreground
 ground truth; VideoMatte foreground/alpha pairs also need suitable reviewed
 backgrounds when constructing training RGB images.
 
+## Review a pending label draft on its own page
+
+An existing `kithmoot-pending-label-draft-v1` JSON record and a PNG comparison
+can be made into a self-contained review page, without approving a source:
+
+```sh
+npm run vision:label-review -- --draft data/draft-labels.json --preview data/preview.png --output data/review.html --reviewer reviewer-1
+```
+
+The draft record identifies `source_sha256`, `frame` (`sha256`, `width`,
+`height`), `foreground.sha256`, `requested_time_seconds` and
+`face_boxes_xywh_pixels` (arrays of `[x, y, width, height]`). Its `format` is
+`kithmoot-pending-label-draft-v1`. The PNG is the visual comparison to review.
+
+Open the resulting HTML in a browser. **Looks good** and **Needs changes**
+record the label verdict and optional note locally. **Save review** downloads
+a `kithmoot-label-review-v1` JSON record to retain with the draft. If browser
+storage is unavailable, the page says so and the download still works.
+Changing the source, frame, mask, face boxes or preview requires a fresh review.
+Feedback is about labels only: it never grants source rights, approves model
+training or creates a training export. Keep the HTML, imagery and feedback
+outside Git. The generator refuses to replace a file unless `--overwrite` is
+explicitly supplied.
+
 ## Train on the M4
 
 Use this source version on the M4 in a clean checkout or an isolated source
@@ -128,11 +152,14 @@ review/import/train loop is not a capable real-camera model.
 
 ```sh
 node --test workshop/browser.test.mjs
+VISION_WORKSHOP_WEBKIT=1 node --test workshop/browser.test.mjs
 python -m unittest discover -s tests -v
 ```
 
 Browser checks use only original synthetic fixtures. They exercise source
 approval gates, frame annotation, mask import, export/reopen/edit, split-leak
-rejection, local-only requests and phone/light/dark layouts. They never access
+rejection, local-only requests, standalone label feedback in Chromium/WebKit,
+browser-storage failure, changed-draft review isolation and phone/light/dark layouts.
+WebKit is enabled explicitly by the second command and in CI. They never access
 a real camera or assert real-face accuracy. Vision CI also imports that actual
 browser export and trains/evaluates/exports a bounded model.
